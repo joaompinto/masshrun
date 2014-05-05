@@ -28,10 +28,15 @@ def main():
     #sys.stdin.read()
 
     for line in input_lines:
-        name, username, hostname, password = line.split()
+        fields = line.split()
+        if len(fields) < 4:
+            print "Invalid line, must contain: system_name username hostname password"
+            sys.exit(2)
+        name, username, hostname, password = fields[:4]
+        su_username = fields[4] if len(fields) > 4 else ''
         client = SSHClient(name, username, hostname, password)
         client.connect()
-        client.run_su_script(script_fname +':' + output_dir)
+        client.run_su_script(script_fname +':' + output_dir, su_username)
 
 if __name__ == '__main__':
     main()

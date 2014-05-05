@@ -50,7 +50,7 @@ class SSHClient():
     def sendall(self, message):
         self.chan.sendall(message)
 
-    def run_su_script(self, run_specification):
+    def run_su_script(self, run_specification, su_username):
         if ':' in run_specification:
             local_script_fname, local_output_dir = run_specification.split(':')
             if not isdir(local_output_dir):
@@ -63,19 +63,21 @@ class SSHClient():
         tmp_fname = '/tmp/r_%s_%d_%d' % (username, os.getpid(), randint(1, 9999))
         sftp = paramiko.SFTPClient.from_transport(self.chan.transport)
         sftp.put(local_script_fname, tmp_fname)
-        sftp.chmod(tmp_fname, 0700)
-        self.sendall("sudo -K\n")
-        self.sendall("sudo su -\n")
-        self._wait_for_data(['[P|p]assword'])
-        self.sendall(self.password+"\n")
-        # Critical sync point, we must receive a prompt before resuming
-        self._wait_for_data(['[@#$:>]'])
+        sftp.chmod(tmp_fname, 0755)
+        if su_username:
+            self.sendall("sudo -K\n")
+            self.sendall("sudo su - %s\n" % su_username)
+            self._wait_for_data(['[P|p]assword'])
+            self.sendall(self.password+"\n")
+            # Critical sync point, we must receive a prompt before resuming
+            self._wait_for_data(['[@#$:>]'])
         self.sendall("%s > %s.out 2>%s.err\n" %
             (tmp_fname, tmp_fname, tmp_fname))
-        self.sendall("chown %s %s.out %s.err\n" %
-            (username, tmp_fname, tmp_fname))
-        self.sendall('echo "Just" "Randomsassh"\n')
-        self._wait_for_data(["Just Randomsassh"])
+        if su_username:
+            self.sendall("chown %s %s.out %s.err\n" %
+                (username, tmp_fname, tmp_fname))
+        self.sendall('echo "Just" "Randomsasshstring"\n')
+        self._wait_for_data(["Just Randomsasshstring"])
         local_fname = join(local_output_dir, self.name+'.out')
         sftp.get(tmp_fname+'.out', local_fname)
         local_fname = join(local_output_dir, self.name+'.err')
