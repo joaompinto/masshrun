@@ -5,11 +5,12 @@ import os
 from random import randint
 from os.path import isdir, join
 
+
 class SSHClient():
     """
-    Encapsulates an ssh client connection and integratted with the password
-    manager.
+    Encapsulates an ssh client connection
     """
+
     def __init__(self, name, username, hostname, password):
         self.name = name
         self.hostname = hostname
@@ -23,7 +24,7 @@ class SSHClient():
         ssh = self.ssh
         port = 22
         print self.hostname
-        ssh.connect(self.hostname, port = port
+        ssh.connect(self.hostname, port=port
                     , username=self.username, password=self.password, timeout=20)
         self.chan = chan = ssh.invoke_shell(term='vt100')
         chan.transport.set_keepalive(10)
@@ -36,7 +37,7 @@ class SSHClient():
         while True:
             x = chan.recv(1024)
             if len(x) == 0:
-                self.log( "*** Connection terminated\r")
+                self.log("*** Connection terminated\r")
                 sys.exit(3)
             data += x
             if verbose:
@@ -68,22 +69,22 @@ class SSHClient():
             self.sendall("sudo -K\n")
             self.sendall("sudo su - %s\n" % su_username)
             self._wait_for_data(['[P|p]assword'])
-            self.sendall(self.password+"\n")
+            self.sendall(self.password + "\n")
             # Critical sync point, we must receive a prompt before resuming
             self._wait_for_data(['[@#$:>]'])
-        self.sendall("%s > %s.out 2>%s.err\n" %
-            (tmp_fname, tmp_fname, tmp_fname))
+        self.sendall("%s %s > %s.out 2>%s.err\n" %
+                     (tmp_fname, self.name, tmp_fname, tmp_fname))
         if su_username:
             self.sendall("chown %s %s.out %s.err\n" %
-                (username, tmp_fname, tmp_fname))
+                         (username, tmp_fname, tmp_fname))
         self.sendall('echo "Just" "Randomsasshstring"\n')
         self._wait_for_data(["Just Randomsasshstring"])
-        local_fname = join(local_output_dir, self.name+'.out')
-        sftp.get(tmp_fname+'.out', local_fname)
-        local_fname = join(local_output_dir, self.name+'.err')
-        sftp.get(tmp_fname+'.err', local_fname)
+        local_fname = join(local_output_dir, self.name + '.out')
+        sftp.get(tmp_fname + '.out', local_fname)
+        local_fname = join(local_output_dir, self.name + '.err')
+        sftp.get(tmp_fname + '.err', local_fname)
         self.sendall('rm -f %s %s.out %s.err\n' %
-            (tmp_fname, tmp_fname, tmp_fname))
+                     (tmp_fname, tmp_fname, tmp_fname))
         if os.path.getsize(local_fname) == 0:
             os.unlink(local_fname)
         if not local_output_dir:

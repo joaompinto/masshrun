@@ -1,8 +1,9 @@
 import sys
 import time
 import os
-from os.path import join
+from os.path import join, exists, basename
 from masshrun.sshclient import SSHClient
+
 
 def main():
     if len(sys.argv) < 2:
@@ -16,16 +17,28 @@ def main():
         print 'Supplied script contains "\\r", please save with Unix EOLs'
         sys.exit(3)
 
-    output_dir = join("output", time.strftime('%Y%m%d_%H%M%S'))
+    output_dir = join("output", 'lastrun')
+    if exists(output_dir):
+        last_run_filename = join(output_dir, 'script')
+        if exists(last_run_filename):
+            with open(last_run_filename, 'r') as script_file:
+                last_run_script = script_file.read()
+        else:
+            last_run_script = ''
+        last_output_dir = join("output", last_run_script+time.strftime('_%Y%m%d_%H%M%S'))
+        os.rename(output_dir, last_output_dir)
     os.makedirs(output_dir)
 
-    input_lines =[]
+    # Record script name to identify the output history
+    with open(join(output_dir, 'script'), 'w') as script_file:
+        script_file.write(basename(script_fname))
+
+    input_lines = []
     while True:
         line = raw_input()
         if not line:
             break
         input_lines.append(line)
-    #sys.stdin.read()
 
     for line in input_lines:
         fields = line.split()
@@ -36,7 +49,8 @@ def main():
         su_username = fields[4] if len(fields) > 4 else ''
         client = SSHClient(name, username, hostname, password)
         client.connect()
-        client.run_su_script(script_fname +':' + output_dir, su_username)
+        client.run_su_script(script_fname + ':' + output_dir, su_username)
+
 
 if __name__ == '__main__':
     main()
